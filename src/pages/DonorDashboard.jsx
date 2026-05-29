@@ -94,7 +94,7 @@ export default function DonorDashboard() {
     async function fetchData() {
       try {
         const cityQuery = user.city ? `city=${encodeURIComponent(user.city)}&` : '';
-        const reqRes = await fetch(`/api/requests?${cityQuery}status=open`);
+        const reqRes = await fetch(`/api/requests/?${cityQuery}status=open`);
         if (reqRes.ok) {
           const data = await reqRes.json();
           const id = user.id || user.user_id;
@@ -103,14 +103,14 @@ export default function DonorDashboard() {
 
         const id = user.id || user.user_id;
         if (id) {
-          const histRes = await fetch(`/api/donors/${id}/donations`);
+          const histRes = await fetch(`/api/donors/${id}/donations/`);
           if (histRes.ok) {
             setDonationHistory(await histRes.json());
             setChartData(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map(m => ({ month: m, donations: Math.floor(Math.random() * 3) })));
           }
 
           // Fetch requests posted by this user
-          const myRes = await fetch(`/api/requests?status=open&requester_id=${id}`);
+          const myRes = await fetch(`/api/requests/?status=open&requester_id=${id}`);
           if (myRes.ok) {
             setMyRequests(await myRes.json());
           }
@@ -174,6 +174,11 @@ export default function DonorDashboard() {
     </div>
   );
 
+  const lastDonation = user?.last_donation;
+  const daysPassed = lastDonation ? Math.floor((new Date() - new Date(lastDonation)) / (1000 * 60 * 60 * 24)) : 999;
+  const daysRemaining = Math.max(0, 56 - daysPassed);
+  const isEligible = daysRemaining === 0;
+
   return (
     <div className="space-y-6 pb-8">
       {/* Welcome Header */}
@@ -220,16 +225,16 @@ export default function DonorDashboard() {
       {/* Stats Grid */}
       <motion.div variants={stagger} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <motion.div variants={fadeUp}>
-          <StatsCard label="Total Donations" value={user?.donation_count ?? '—'} icon={Droplets} color="#1F7A8C" delay={0} />
+          <StatsCard label="Next Eligible" value={isEligible ? 'Now' : `${daysRemaining} days`} icon={Clock} color={isEligible ? '#1F7A8C' : '#BFDBF7'} delay={0} />
         </motion.div>
         <motion.div variants={fadeUp}>
-          <StatsCard label="Lives Impacted" value={user?.donation_count ? user.donation_count * 3 : '—'} icon={Heart} color="#BFDBF7" delay={0.1} />
+          <StatsCard label="Total Donations" value={user?.donation_count ?? '—'} icon={Droplets} color="#1F7A8C" delay={0.1} />
         </motion.div>
         <motion.div variants={fadeUp}>
-          <StatsCard label="Donor Rank" value={user?.rank ?? '—'} icon={Award} color="#E1E5F2" delay={0.2} />
+          <StatsCard label="Lives Impacted" value={user?.donation_count ? user.donation_count * 3 : '—'} icon={Heart} color="#BFDBF7" delay={0.2} />
         </motion.div>
         <motion.div variants={fadeUp}>
-          <StatsCard label="Profile Complete" value={user?.profile_completion ? `${user.profile_completion}%` : '—'} icon={Activity} color="#22909F" delay={0.3} />
+          <StatsCard label="Donor Rank" value={user?.rank ?? 'Veteran'} icon={Award} color="#E1E5F2" delay={0.3} />
         </motion.div>
       </motion.div>
 

@@ -13,7 +13,7 @@ async def get_requests(
     status: Optional[str] = "open",
     requester_id: Optional[int] = None
 ):
-    query = "SELECT * FROM blood_requests WHERE 1=1"
+    query = "SELECT *, hospital as hospital_name FROM blood_requests WHERE 1=1"
     params = []
     
     if city:
@@ -39,20 +39,46 @@ async def get_requests(
 async def create_blood_request(blood_request: RequestCreate):
     insert_query = """
         INSERT INTO blood_requests (
-            requester_id, patient_name, blood_group, hospital, 
+            requester_id, hospital_id, patient_name, blood_group, hospital, 
             city, units, urgency, contact_phone
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
     try:
         request_id = execute_query(insert_query, (
-            blood_request.requester_id, blood_request.patient_name, 
-            blood_request.blood_group, blood_request.hospital, 
+            blood_request.requester_id, blood_request.hospital_id, blood_request.patient_name, 
+            blood_request.blood_group, blood_request.hospital_name, 
             blood_request.city, blood_request.units, 
             blood_request.urgency, blood_request.contact_phone
         ), commit=True)
         
-        # Fetch the created request
-        fetch_query = "SELECT * FROM blood_requests WHERE id = %s"
+        # --- Smart Matching Engine ---
+        # Find compatible donors in the same city who are not on cooldown
+        donor_query = """
+            SELECT d.user_id 
+            FROM donors d
+            JOIN blood_compatibility c ON d.blood_group = c.donor_group
+            WHERE c.recipient_group = %s
+            AND d.city = %s
+            AND d.available = TRUE
+            AND (d.last_donation IS NULL OR DATEDIFF(CURRENT_DATE, d.last_donation) >= 56)
+            AND d.user_id != %s
+        """
+        compatible_donors = execute_query(donor_query, (blood_request.blood_group, blood_request.city, blood_request.requester_id), fetch=True)
+        
+        # Send notifications to all matched donors
+        for donor in compatible_donors:
+            notif_msg = (
+                f"URGENT: {blood_request.blood_group} requested at {blood_request.hospital_name}. "
+                f"Your blood type is a compatible match! Please respond if you can help."
+            )
+            execute_query(
+                "INSERT INTO notifications (user_id, type, message, related_id) VALUES (%s, %s, %s, %s)",
+                (donor['user_id'], "request", notif_msg, request_id),
+                commit=True
+            )
+
+        # Fetch the created request to return
+        fetch_query = "SELECT *, hospital as hospital_name FROM blood_requests WHERE id = %s"
         new_request = execute_query(fetch_query, (request_id,), fetch=True)
         return new_request[0]
     except Exception as e:
@@ -62,13 +88,14 @@ async def create_blood_request(blood_request: RequestCreate):
 async def update_request_status(request_id: int, request_update: RequestUpdate):
     update_data = request_update.dict(exclude_unset=True)
     if not update_data:
-        fetch_query = "SELECT * FROM blood_requests WHERE id = %s"
+        fetch_query = "SELECT *, hospital as hospital_name FROM blood_requests WHERE id = %s"
         res = execute_query(fetch_query, (request_id,), fetch=True)
         return res[0]
     
     query = "UPDATE blood_requests SET "
     params = []
     for key, value in update_data.items():
+        # Handle field name mapping if necessary
         query += f"{key} = %s, "
         params.append(value)
     
@@ -77,7 +104,7 @@ async def update_request_status(request_id: int, request_update: RequestUpdate):
     
     try:
         execute_query(query, tuple(params), commit=True)
-        fetch_query = "SELECT * FROM blood_requests WHERE id = %s"
+        fetch_query = "SELECT *, hospital as hospital_name FROM blood_requests WHERE id = %s"
         res = execute_query(fetch_query, (request_id,), fetch=True)
         if not res:
             raise HTTPException(status_code=404, detail="Request not found")
@@ -89,7 +116,7 @@ async def update_request_status(request_id: int, request_update: RequestUpdate):
 async def respond_to_request(request_id: int, donor_id: int):
     print(f"DEBUG: Donor {donor_id} responding to request {request_id}")
     # Fetch the blood request
-    req = execute_query("SELECT * FROM blood_requests WHERE id = %s", (request_id,), fetch=True)
+    req = execute_query("SELECT *, hospital as hospital_name FROM blood_requests WHERE id = %s", (request_id,), fetch=True)
     if not req:
         raise HTTPException(status_code=404, detail="Request not found")
     req = req[0]
@@ -123,7 +150,7 @@ async def respond_to_request(request_id: int, donor_id: int):
     # Create notification for the requester
     notif_msg = (
         f"{donor_name} has responded to your {req['blood_group']} blood request "
-        f"at {req['hospital']}. They are ready to donate."
+        f"at {req['hospital_name']}. They are ready to donate."
     )
     execute_query(
         "INSERT INTO notifications (user_id, type, message, related_id) VALUES (%s, %s, %s, %s)",
@@ -135,7 +162,7 @@ async def respond_to_request(request_id: int, donor_id: int):
         "success": True,
         "contact_phone": req["contact_phone"],
         "patient_name": req["patient_name"],
-        "hospital": req["hospital"],
+        "hospital_name": req["hospital_name"],
         "blood_group": req["blood_group"],
     }
 
@@ -191,12 +218,12 @@ async def confirm_donation(request_id: int, donor_id: int):
     )
 
     # 3. Fetch request details for history
-    req = execute_query("SELECT * FROM blood_requests WHERE id = %s", (request_id,), fetch=True)[0]
+    req = execute_query("SELECT *, hospital as hospital_name FROM blood_requests WHERE id = %s", (request_id,), fetch=True)[0]
 
     # 4. Insert into donations history
     execute_query(
-        "INSERT INTO donations (donor_id, request_id, hospital, units, date) VALUES (%s, %s, %s, %s, %s)",
-        (donor_id, request_id, req['hospital'], req['units'], datetime.now().date()),
+        "INSERT INTO donations (donor_id, request_id, hospital_id, hospital, units, date) VALUES (%s, %s, %s, %s, %s, %s)",
+        (donor_id, request_id, req['hospital_id'], req['hospital_name'], req['units'], datetime.now().date()),
         commit=True
     )
 
@@ -215,3 +242,48 @@ async def confirm_donation(request_id: int, donor_id: int):
     )
 
     return {"success": True, "message": "Donation confirmed and recorded"}
+
+@router.post("/{request_id}/fulfill-hospital")
+async def fulfill_from_hospital_stock(request_id: int, hospital_id: int):
+    # 1. Fetch request details
+    req = execute_query("SELECT *, hospital as hospital_name FROM blood_requests WHERE id = %s", (request_id,), fetch=True)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    req = req[0]
+    
+    # 2. Check hospital inventory
+    inv = execute_query(
+        "SELECT id, units_available FROM inventory WHERE hospital_id = %s AND blood_group = %s",
+        (hospital_id, req['blood_group']),
+        fetch=True
+    )
+    
+    if not inv or inv[0]['units_available'] < req['units']:
+        raise HTTPException(status_code=400, detail="Insufficient hospital stock to fulfill this request")
+    
+    # 3. Decrement inventory
+    execute_query(
+        "UPDATE inventory SET units_available = units_available - %s WHERE id = %s",
+        (req['units'], inv[0]['id']),
+        commit=True
+    )
+    
+    # 4. Update request status
+    execute_query(
+        "UPDATE blood_requests SET status = 'fulfilled', hospital_id = %s WHERE id = %s",
+        (hospital_id, request_id),
+        commit=True
+    )
+    
+    # 5. Fetch hospital name for notification
+    hosp = execute_query("SELECT name FROM hospitals WHERE id = %s", (hospital_id,), fetch=True)[0]
+    
+    # 6. Notify the requester
+    notif_msg = f"Your request for {req['blood_group']} blood has been fulfilled by {hosp['name']} from their internal bank. Please contact them to coordinate."
+    execute_query(
+        "INSERT INTO notifications (user_id, type, message, related_id) VALUES (%s, %s, %s, %s)",
+        (req['requester_id'], "fulfilled", notif_msg, request_id),
+        commit=True
+    )
+    
+    return {"success": True, "message": "Request fulfilled using hospital inventory"}

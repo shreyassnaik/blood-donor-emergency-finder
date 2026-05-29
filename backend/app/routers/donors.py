@@ -9,21 +9,44 @@ router = APIRouter()
 async def get_donors(
     city: Optional[str] = None,
     blood_group: Optional[str] = None,
-    available_only: bool = True
+    available_only: Optional[bool] = None,
+    cooldown_check: Optional[bool] = None
 ):
-    query = "SELECT * FROM donors WHERE 1=1"
+    # Added COALESCE and DATEDIFF to calculate eligibility status in the query
+    query = """
+        SELECT d.*, 
+               CASE 
+                 WHEN d.last_donation IS NULL THEN TRUE
+                 WHEN DATEDIFF(CURRENT_DATE, d.last_donation) >= 56 THEN TRUE
+                 ELSE FALSE
+               END as is_eligible
+        FROM donors d
+    """
     params = []
     
+    if blood_group:
+        query += " JOIN blood_compatibility c ON d.blood_group = c.donor_group"
+        query += " WHERE c.recipient_group = %s"
+        params.append(blood_group)
+    else:
+        query += " WHERE 1=1"
+        
     if city:
-        query += " AND city = %s"
+        query += " AND d.city = %s"
         params.append(city)
     
-    if blood_group:
-        query += " AND blood_group = %s"
-        params.append(blood_group)
+    if available_only is True:
+        query += " AND d.available = TRUE"
         
-    if available_only:
-        query += " AND available = TRUE"
+    if cooldown_check is True:
+        query += " AND (d.last_donation IS NULL OR DATEDIFF(CURRENT_DATE, d.last_donation) >= 56)"
+        
+    # Ranking
+    if city:
+        query += " ORDER BY (d.city = %s) DESC, d.donation_count DESC"
+        params.append(city)
+    else:
+        query += " ORDER BY d.donation_count DESC"
         
     donors = execute_query(query, tuple(params), fetch=True)
     return donors

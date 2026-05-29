@@ -1,5 +1,6 @@
-﻿import { useState } from 'react';
-import { motion } from 'framer-motion';
+﻿import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation, Link } from 'react-router-dom';
 import { User, MapPin, Droplets, AlertTriangle, FileText, Building2, Hash, Send, CheckCircle, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FormInput, { FormSelect, FormTextarea } from '../components/ui/FormInput';
@@ -9,13 +10,33 @@ import { useApp } from '../context/AppContext';
 
 export default function RequestBloodPage() {
   const { user } = useApp();
+  const location = useLocation();
+  const prefill = location.state || {};
+
   const [form, setForm] = useState({
-    patientName: '', bloodGroup: '', hospital: '', units: '1',
-    urgency: '', city: '', notes: '', contactPhone: '',
+    patientName: '', bloodGroup: '', hospital: prefill.hospital_name || '', units: '1',
+    urgency: '', city: prefill.city || '', notes: '', contactPhone: prefill.phone || '',
+    hospital_id: prefill.hospital_id || null
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [hospitalStock, setHospitalStock] = useState([]);
+
+  useEffect(() => {
+    if (form.bloodGroup && form.city) {
+      const checkStock = async () => {
+        try {
+          const res = await fetch(`/api/inventory/availability/search?blood_group=${encodeURIComponent(form.bloodGroup)}&city=${encodeURIComponent(form.city)}`);
+          if (res.ok) setHospitalStock(await res.json());
+        } catch (e) { console.error("Stock check failed", e); }
+      };
+      const timer = setTimeout(checkStock, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setHospitalStock([]);
+    }
+  }, [form.bloodGroup, form.city]);
 
   const set = (key, val) => {
     setForm(f => ({ ...f, [key]: val }));
@@ -55,7 +76,8 @@ export default function RequestBloodPage() {
         body: JSON.stringify({
           patient_name: form.patientName,
           blood_group: form.bloodGroup,
-          hospital: form.hospital,
+          hospital_name: form.hospital,
+          hospital_id: form.hospital_id,
           city: form.city,
           units: parseInt(form.units),
           urgency: form.urgency,
@@ -128,6 +150,46 @@ export default function RequestBloodPage() {
             <p className="text-xs text-[#BFDBF7]/40">Fill all details to notify nearby verified donors instantly</p>
           </div>
         </div>
+
+        {/* Hospital Availability Alert */}
+        <AnimatePresence>
+          {hospitalStock.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              className="p-5 rounded-2xl bg-[#1F7A8C] text-white shadow-xl shadow-[#1F7A8C40] border border-[#BFDBF7]/20 overflow-hidden"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Building2 size={24} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    Nearby Stock Found! <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Live Stock</span>
+                  </h3>
+                  <p className="text-sm text-white/80 mt-1 leading-relaxed">
+                    We found {hospitalStock.length} verified hospital{hospitalStock.length !== 1 ? 's' : ''} in {form.city} with <span className="font-bold underline">{form.bloodGroup}</span> available right now. 
+                    Consider contacting them directly for faster assistance.
+                  </p>
+                  <div className="mt-4 space-y-2">
+                    {hospitalStock.slice(0, 2).map(h => (
+                      <div key={h.hospital_id} className="p-3 rounded-xl bg-black/10 border border-white/10 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold">{h.hospital_name}</p>
+                          <p className="text-[10px] text-white/60">{h.address}</p>
+                        </div>
+                        <a href={`tel:${h.phone}`} className="px-3 py-1.5 bg-white text-[#1F7A8C] text-[10px] font-black rounded-lg hover:bg-[#E1E5F2] transition-colors flex items-center gap-1.5">
+                          <Phone size={10} /> CALL NOW
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Urgency Banner */}
         {selectedUrgency && (

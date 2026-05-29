@@ -10,11 +10,13 @@
  *   GET /api/admin/blood-distribution → blood group breakdown
  */
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users, Droplets, TrendingUp, AlertCircle, Shield,
-  Activity, CheckCircle, Clock, Download, Database
+  Activity, CheckCircle, Clock, Download, Database, Building2,
+  MapPin, Phone
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -66,21 +68,36 @@ const EmptyChart = ({ label }) => (
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [hospitals, setHospitals] = useState([]);
+  const [loadingH, setLoadingH] = useState(false);
 
-  /**
-   * Replace all of the following with real API responses.
-   * Example: const [stats, setStats] = useState(null);
-   *          useEffect(() => { fetch('/api/admin/stats').then(…).then(setStats) }, []);
-   */
-  const overviewStats = null;      // GET /api/admin/stats
-  const monthlyData = [];          // GET /api/admin/analytics/monthly
-  const bloodDistribution = [];    // GET /api/admin/blood-distribution
-  const users = [];                // GET /api/admin/users
-  const activeEmergencies = [];    // GET /api/admin/requests/active
+  const fetchHospitals = async () => {
+    setLoadingH(true);
+    try {
+      const res = await fetch('/api/hospitals/');
+      if (res.ok) setHospitals(await res.json());
+    } catch (e) { toast.error("Failed to load hospitals"); }
+    finally { setLoadingH(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'hospitals') fetchHospitals();
+  }, [activeTab]);
+
+  const verifyHospital = async (id) => {
+    try {
+      const res = await fetch(`/api/admin/hospitals/${id}/verify`, { method: 'POST' });
+      if (res.ok) {
+        toast.success("Hospital verified!");
+        fetchHospitals();
+      }
+    } catch (e) { toast.error("Verification failed"); }
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'users', label: 'User Management' },
+    { id: 'hospitals', label: 'Hospitals' },
     { id: 'emergencies', label: 'Active Emergencies' },
     { id: 'analytics', label: 'Analytics' },
   ];
@@ -230,6 +247,50 @@ export default function AdminDashboard() {
             data={users}
             emptyMessage="No users yet — data will appear once the backend is connected"
           />
+        </motion.div>
+      )}
+
+      {/* ── Hospitals Tab ── */}
+      {activeTab === 'hospitals' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-2xl p-6">
+            <h2 className="text-base font-semibold text-white mb-6 flex items-center gap-2">
+              <Building2 size={18} className="text-[#1F7A8C]" /> Hospital Verification Queue
+            </h2>
+            {hospitals.length > 0 ? (
+              <div className="space-y-4">
+                {hospitals.map(h => (
+                  <div key={h.id} className="flex items-center justify-between p-4 rounded-xl bg-[#1F7A8C]/05 border border-[#1F7A8C]/10">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-[#1F7A8C]/20 flex items-center justify-center">
+                        <Building2 size={18} className="text-[#1F7A8C]" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white">{h.name}</p>
+                        <p className="text-xs text-[#BFDBF7]/40">{h.city} · {h.phone}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {h.is_verified ? (
+                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E1E5F2]/10 text-[#E1E5F2] text-[10px] font-bold uppercase tracking-wider">
+                          <CheckCircle size={10} /> Verified
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => verifyHospital(h.id)}
+                          className="px-4 py-1.5 bg-[#1F7A8C] text-white text-[10px] font-bold rounded-lg hover:bg-[#155E70] transition-colors"
+                        >
+                          Approve Facility
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[#BFDBF7]/30 italic text-center py-10">No hospitals registered yet</p>
+            )}
+          </div>
         </motion.div>
       )}
 

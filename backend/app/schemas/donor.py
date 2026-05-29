@@ -24,6 +24,7 @@ class DonorResponse(DonorBase):
     donation_count: int
     last_donation: Optional[date] = None
     verified: bool
+    is_eligible: bool
 
     class Config:
         from_attributes = True

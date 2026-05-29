@@ -5,11 +5,20 @@ import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import DonorDashboard from '../pages/DonorDashboard';
+import HospitalDashboard from '../pages/HospitalDashboard';
 import RequestBloodPage from '../pages/RequestBloodPage';
 import FindDonorsPage from '../pages/FindDonorsPage';
 import AdminDashboard from '../pages/AdminDashboard';
 import ProfilePage from '../pages/ProfilePage';
 import NotFoundPage from '../pages/NotFoundPage';
+import { useApp } from '../context/AppContext';
+
+function DashboardSwitcher() {
+  const { user } = useApp();
+  if (user?.role === 'hospital') return <HospitalDashboard />;
+  if (user?.role === 'admin') return <AdminDashboard />;
+  return <DonorDashboard />;
+}
 
 export default function AppRouter() {
   return (
@@ -28,7 +37,7 @@ export default function AppRouter() {
 
         {/* Dashboard routes */}
         <Route element={<DashboardLayout />}>
-          <Route path="dashboard" element={<DonorDashboard />} />
+          <Route path="dashboard" element={<DashboardSwitcher />} />
           <Route path="admin" element={<AdminDashboard />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>

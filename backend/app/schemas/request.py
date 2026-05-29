@@ -5,7 +5,8 @@ from datetime import datetime
 class RequestBase(BaseModel):
     patient_name: str
     blood_group: str
-    hospital: str
+    hospital_name: str
+    hospital_id: Optional[int] = None
     city: str
     units: int
     urgency: str

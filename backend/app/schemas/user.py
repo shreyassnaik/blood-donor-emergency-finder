@@ -7,7 +7,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role: Optional[str] = "user"
+    role: Optional[str] = "user" # 'donor', 'admin', 'hospital', 'requester'
 
 class UserLogin(UserBase):
     password: str

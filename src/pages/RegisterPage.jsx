@@ -42,7 +42,7 @@ export default function RegisterPage() {
       else if (!/^\+?[\d\s-]{10,}$/.test(form.phone)) errs.phone = 'Valid phone number required';
       if (!form.city) errs.city = 'City is required';
     }
-    if (step === 2) {
+    if (step === 2 && form.role === 'donor') {
       if (!form.bloodGroup) errs.bloodGroup = 'Blood group required';
     }
     return errs;
@@ -51,6 +51,11 @@ export default function RegisterPage() {
   const nextStep = () => {
     const errs = validateStep();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    // If not a donor, skip Step 2 (Donor Info) and go straight to submit or summary
+    if (step === 1 && form.role !== 'donor') {
+      handleSubmit({ preventDefault: () => {} });
+      return;
+    }
     setStep(s => s + 1);
   };
 
@@ -60,7 +65,6 @@ export default function RegisterPage() {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
     
-    // Convert frontend form to backend UserCreate schema
     const userData = {
       email: form.email,
       password: form.password,
@@ -71,22 +75,30 @@ export default function RegisterPage() {
     
     if (registerResult && registerResult.id) {
       if (form.role === 'donor') {
-        try {
-          await fetch('/api/donors', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: registerResult.id,
-              name: form.name,
-              blood_group: form.bloodGroup,
-              city: form.city,
-              phone: form.phone,
-              available: true
-            })
-          });
-        } catch (e) {
-          console.error("Failed to create donor profile", e);
-        }
+        await fetch('/api/donors', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: registerResult.id,
+            name: form.name,
+            blood_group: form.bloodGroup,
+            city: form.city,
+            phone: form.phone,
+            available: true
+          })
+        });
+      } else if (form.role === 'hospital') {
+        await fetch('/api/hospitals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: registerResult.id,
+            name: form.name,
+            city: form.city,
+            phone: form.phone,
+            address: `Located in ${form.city}`
+          })
+        });
       }
 
       const loginSuccess = await login(form.email, form.password);
@@ -133,27 +145,28 @@ export default function RegisterPage() {
         value={form.city} onChange={e => set('city', e.target.value)} error={errors.city} required />
       <div>
         <p className="text-sm font-medium text-[#BFDBF7]/80 mb-3">I am registering as <span className="text-[#E1E5F2]">*</span></p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { value: 'donor', label: 'Blood Donor', desc: 'I want to donate blood', emoji: '🩸' },
-            { value: 'requester', label: 'Patient/Family', desc: 'I need blood for a patient', emoji: '🏥' },
+            { value: 'donor', label: 'Donor', emoji: '🩸', desc: 'Save lives' },
+            { value: 'hospital', label: 'Hospital', emoji: '🏥', desc: 'Medical facility' },
+            { value: 'requester', label: 'Recipient', emoji: '🤝', desc: 'Need blood' },
           ].map(opt => (
             <button
               key={opt.value}
               type="button"
               onClick={() => set('role', opt.value)}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
+              className={`p-3 rounded-2xl border-2 text-left transition-all ${
                 form.role === opt.value
                   ? 'border-[#1F7A8C] bg-[#1F7A8C]/15'
                   : 'border-[#1F7A8C]/15 hover:border-[#1F7A8C]/35 bg-[#033A4E]/60'
               }`}
             >
-              <div className="text-2xl mb-2">{opt.emoji}</div>
-              <p className="text-sm font-semibold text-[#BFDBF7]">{opt.label}</p>
-              <p className="text-xs text-[#BFDBF7]/50 mt-0.5">{opt.desc}</p>
+              <div className="text-xl mb-1">{opt.emoji}</div>
+              <p className="text-xs font-semibold text-[#BFDBF7]">{opt.label}</p>
+              <p className="text-[10px] text-[#BFDBF7]/50 mt-0.5 leading-tight">{opt.desc}</p>
               {form.role === opt.value && (
-                <div className="mt-2 w-5 h-5 bg-[#1F7A8C] rounded-full flex items-center justify-center">
-                  <Check size={12} className="text-[#BFDBF7]" />
+                <div className="mt-1 w-4 h-4 bg-[#1F7A8C] rounded-full flex items-center justify-center">
+                  <Check size={10} className="text-[#BFDBF7]" />
                 </div>
               )}
             </button>

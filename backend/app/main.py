@@ -25,12 +25,15 @@ async def health_check():
     return {"status": "healthy"}
 
 # Include routers here as they are implemented
-from .routers import auth, donors, requests, notifications, stats
+from .routers import auth, donors, requests, notifications, stats, hospitals, inventory, admin
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(donors.router, prefix="/api/donors", tags=["Donors"])
+app.include_router(hospitals.router, prefix="/api/hospitals", tags=["Hospitals"])
+app.include_router(inventory.router, prefix="/api/inventory", tags=["Inventory"])
 app.include_router(requests.router, prefix="/api/requests", tags=["Blood Requests"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(stats.router, prefix="/api/stats", tags=["Stats"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 if __name__ == "__main__":
     import uvicorn

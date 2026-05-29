@@ -31,7 +31,6 @@ export default function DonorCard({ donor, onContact, isContacting, delay = 0 })
           <MapPin size={10} className="text-[#1F7A8C]" /> {donor.city}
         </p>
 
-        {/* Stats Row */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="text-center p-2 bg-[#1F7A8C]/08 rounded-xl border border-[#1F7A8C]/10">
             <p className="text-base font-bold text-[#BFDBF7]">{donor.donation_count}</p>
@@ -39,31 +38,38 @@ export default function DonorCard({ donor, onContact, isContacting, delay = 0 })
           </div>
           <div className="text-center p-2 bg-[#BFDBF7]/08 rounded-xl border border-[#BFDBF7]/10">
             <p className="text-base font-bold text-[#BFDBF7] flex items-center justify-center gap-0.5">
-              <Star size={11} className="text-[#BFDBF7] fill-[#BFDBF7]" />{donor.rating}
+              <Star size={11} className="text-[#BFDBF7] fill-[#BFDBF7]" />{donor.rating || 4.5}
             </p>
             <p className="text-xs text-[#BFDBF7]/40 mt-0.5">Rating</p>
           </div>
-          <div className={`text-center p-2 rounded-xl border ${donor.available ? 'bg-[#E1E5F2]/08 border-[#E1E5F2]/10' : 'bg-[#1F7A8C]/05 border-[#1F7A8C]/08'}`}>
-            <p className={`text-xs font-bold ${donor.available ? 'text-[#E1E5F2]' : 'text-[#BFDBF7]/30'}`}>
-              {donor.available ? '●' : '○'}
+          <div className={`text-center p-2 rounded-xl border ${donor.available && donor.is_eligible ? 'bg-[#E1E5F2]/08 border-[#E1E5F2]/10' : 'bg-[#1F7A8C]/05 border-[#1F7A8C]/08'}`}>
+            <p className={`text-xs font-bold ${donor.available && donor.is_eligible ? 'text-[#E1E5F2]' : 'text-[#BFDBF7]/30'}`}>
+              {donor.available && donor.is_eligible ? '●' : '○'}
             </p>
-            <p className="text-xs text-[#BFDBF7]/40 mt-0.5">{donor.available ? 'Ready' : 'Busy'}</p>
+            <p className="text-xs text-[#BFDBF7]/40 mt-0.5">{donor.available && donor.is_eligible ? 'Ready' : donor.is_eligible ? 'Busy' : 'Resting'}</p>
           </div>
         </div>
 
-        <p className="text-xs text-[#BFDBF7]/30 mb-4">
-          Last donated: {formatRelativeTime(donor.last_donation)}
-        </p>
+        <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-[#BFDBF7]/30">
+            Last donated: {formatRelativeTime(donor.last_donation)}
+            </p>
+            {!donor.is_eligible && (
+                <span className="text-[10px] bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                    Cooldown
+                </span>
+            )}
+        </div>
       </div>
 
       <div className="px-4 pb-4">
         <button
           onClick={() => onContact?.(donor)}
-          disabled={!donor.available || isContacting}
+          disabled={!donor.available || !donor.is_eligible || isContacting}
           className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
             isContacting
               ? 'bg-[#E1E5F2]/20 border border-[#E1E5F2]/30 text-[#E1E5F2]'
-              : donor.available
+              : (donor.available && donor.is_eligible)
               ? 'bg-[#1F7A8C] hover:bg-[#155E70] text-[#BFDBF7] shadow-md shadow-[#1F7A8C30]'
               : 'bg-[#1F7A8C]/10 border border-[#1F7A8C]/15 text-[#BFDBF7]/30 cursor-not-allowed'
           }`}
@@ -71,7 +77,7 @@ export default function DonorCard({ donor, onContact, isContacting, delay = 0 })
           {isContacting ? (
             <><span className="w-4 h-4 border-2 border-[#E1E5F2] border-t-transparent rounded-full animate-spin" /> Connecting...</>
           ) : (
-            <><Phone size={14} /> {donor.available ? 'Contact Donor' : 'Unavailable'}</>
+            <><Phone size={14} /> {(!donor.available || !donor.is_eligible) ? 'Unavailable' : 'Contact Donor'}</>
           )}
         </button>
       </div>

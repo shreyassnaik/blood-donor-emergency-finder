@@ -247,6 +247,75 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── COMPATIBILITY MATRIX ────────────────────── */}
+      <section className="py-24 bg-[#033A4E]/30 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#1F7A8C]/05 rounded-full blur-[120px] pointer-events-none" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold font-display text-white mb-4">
+              Blood <span className="text-[#BFDBF7]">Compatibility</span> Guide
+            </h2>
+            <p className="text-[#BFDBF7]/50 max-w-xl mx-auto">Understanding who you can give to and receive from is critical in emergencies.</p>
+          </motion.div>
+
+          <div className="grid lg:grid-cols-2 gap-8 items-stretch">
+            {/* Can Donate To */}
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+              className="bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-3xl p-6 sm:p-8"
+            >
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <Heart size={20} className="text-[#1F7A8C] fill-[#1F7A8C]" /> Can Donate To
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { donor: 'O-', canGive: 'Everyone (Universal Donor)' },
+                  { donor: 'O+', canGive: 'O+, A+, B+, AB+' },
+                  { donor: 'A-', canGive: 'A-, A+, AB-, AB+' },
+                  { donor: 'A+', canGive: 'A+, AB+' },
+                  { donor: 'B-', canGive: 'B-, B+, AB-, AB+' },
+                  { donor: 'B+', canGive: 'B+, AB+' },
+                  { donor: 'AB-', canGive: 'AB-, AB+' },
+                  { donor: 'AB+', canGive: 'AB+ Only' },
+                ].map((row, i) => (
+                  <div key={row.donor} className="flex items-center gap-4 p-3 rounded-xl hover:bg-[#1F7A8C]/10 transition-colors border border-transparent hover:border-[#1F7A8C]/20">
+                    <div className="w-12 h-10 rounded-lg bg-[#1F7A8C] flex items-center justify-center font-bold text-white shadow-lg">{row.donor}</div>
+                    <p className="text-sm text-[#BFDBF7]/70 font-medium">{row.canGive}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Can Receive From */}
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+              className="bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-3xl p-6 sm:p-8"
+            >
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <ShieldCheck size={20} className="text-[#BFDBF7]" /> Can Receive From
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { recipient: 'AB+', canReceive: 'Everyone (Universal Recipient)' },
+                  { recipient: 'AB-', canReceive: 'AB-, A-, B-, O-' },
+                  { recipient: 'B+', canReceive: 'B+, B-, O+, O-' },
+                  { recipient: 'B-', canReceive: 'B-, O-' },
+                  { recipient: 'A+', canReceive: 'A+, A-, O+, O-' },
+                  { recipient: 'A-', canReceive: 'A-, O-' },
+                  { recipient: 'O+', canReceive: 'O+, O-' },
+                  { recipient: 'O-', canReceive: 'O- Only' },
+                ].map((row, i) => (
+                  <div key={row.recipient} className="flex items-center gap-4 p-3 rounded-xl hover:bg-[#BFDBF7]/05 transition-colors border border-transparent hover:border-[#BFDBF7]/20">
+                    <div className="w-12 h-10 rounded-lg bg-[#BFDBF7] flex items-center justify-center font-bold text-[#022B3A] shadow-lg">{row.recipient}</div>
+                    <p className="text-sm text-[#BFDBF7]/70 font-medium">{row.canReceive}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ─────────────────────────────── */}
       <section className="py-24 border-b border-[#1F7A8C]/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
