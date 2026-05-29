@@ -2,10 +2,10 @@
  * FindDonorsPage
  *
  * On FastAPI integration, replace the `donors` state with an API fetch:
- *   GET /api/donors?search=&bloodGroup=&city=&available=&sort=
+ *   GET /api/donors?search=&blood_group=&city=&available=&sort=
  * Pass query params from the filter/search/sort state.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, MapPin, Star, Droplets, ArrowUpDown, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ const BLOOD_GROUPS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
 const FILTER_DEFS = [
   {
-    key: 'bloodGroup',
+    key: 'blood_group',
     label: 'Blood Group',
     options: BLOOD_GROUPS.map(g => ({ value: g, label: g })),
   },
@@ -45,12 +45,26 @@ export default function FindDonorsPage() {
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState('rating');
   const [contactedId, setContactedId] = useState(null);
+  const [allDonors, setAllDonors] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  /**
-   * Replace this with API data: GET /api/donors?...
-   * donors should be an array of donor objects from your backend.
-   */
-  const allDonors = [];
+  useEffect(() => {
+    async function fetchDonors() {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/donors');
+        if (response.ok) {
+          const data = await response.json();
+          setAllDonors(data);
+        }
+      } catch (err) {
+        toast.error('Failed to load donors');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDonors();
+  }, []);
 
   const handleFilter = (key, val) => {
     setFilters(f => ({ ...f, [key]: val === 'all' ? undefined : val }));
@@ -62,16 +76,16 @@ export default function FindDonorsPage() {
       const q = search.toLowerCase();
       list = list.filter(d =>
         d.name?.toLowerCase().includes(q) ||
-        d.bloodGroup?.toLowerCase().includes(q) ||
+        d.blood_group?.toLowerCase().includes(q) ||
         d.city?.toLowerCase().includes(q)
       );
     }
-    if (filters.bloodGroup) list = list.filter(d => d.bloodGroup === filters.bloodGroup);
+    if (filters.blood_group) list = list.filter(d => d.blood_group === filters.blood_group);
     if (filters.available === 'available') list = list.filter(d => d.available);
     if (filters.available === 'unavailable') list = list.filter(d => !d.available);
     list.sort((a, b) => {
       if (sort === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
-      if (sort === 'donations') return (b.donationCount ?? 0) - (a.donationCount ?? 0);
+      if (sort === 'donations') return (b.donation_count ?? 0) - (a.donation_count ?? 0);
       if (sort === 'name') return (a.name ?? '').localeCompare(b.name ?? '');
       return 0;
     });
@@ -192,7 +206,7 @@ function DonorCard({ donor, onContact, isContacting }) {
             </div>
             <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#033A4E] ${donor.available ? 'bg-[#E1E5F2]' : 'bg-[#1F7A8C]/40'}`} />
           </div>
-          <BloodGroupBadge group={donor.bloodGroup} />
+          <BloodGroupBadge group={donor.blood_group} />
         </div>
 
         <h3 className="text-sm font-semibold text-white mb-1 truncate">{donor.name}</h3>
@@ -202,7 +216,7 @@ function DonorCard({ donor, onContact, isContacting }) {
 
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="text-center p-2 bg-[#1F7A8C]/08 rounded-xl border border-[#1F7A8C]/10">
-            <p className="text-base font-bold text-white">{donor.donationCount ?? '—'}</p>
+            <p className="text-base font-bold text-white">{donor.donation_count ?? '—'}</p>
             <p className="text-xs text-[#BFDBF7]/40 mt-0.5">Donations</p>
           </div>
           <div className="text-center p-2 bg-[#BFDBF7]/05 rounded-xl border border-[#BFDBF7]/10">

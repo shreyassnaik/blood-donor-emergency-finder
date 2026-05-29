@@ -54,7 +54,7 @@ const userColumns = [
   { key: 'status', label: 'Status', render: (val) => (
     <span className={`badge ${val === 'active' ? 'bg-[#E1E5F2]/15 text-[#E1E5F2]' : 'bg-[#1F7A8C]/15 text-[#BFDBF7]/40'}`}>{val}</span>
   )},
-  { key: 'joinDate', label: 'Joined', render: (val) => formatDate(val) },
+  { key: 'created_at', label: 'Joined', render: (val) => formatDate(val) },
 ];
 
 const EmptyChart = ({ label }) => (
@@ -257,11 +257,11 @@ export default function AdminDashboard() {
             activeEmergencies.map(em => (
               <div key={em.id} className="flex items-center gap-4 p-4 bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-2xl hover:border-[#1F7A8C]/25 transition-all">
                 <div className="w-12 h-12 rounded-xl bg-[#1F7A8C] flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-                  {em.bloodGroup}
+                  {em.blood_group}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white">{em.hospital}</p>
-                  <p className="text-xs text-[#BFDBF7]/40">{em.city} · {em.createdAt}</p>
+                  <p className="text-xs text-[#BFDBF7]/40">{em.city} · {formatDate(em.created_at)}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-[#E1E5F2]">{em.responses ?? 0}</p>

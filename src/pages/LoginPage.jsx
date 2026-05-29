@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Heart, Eye, EyeOff, ArrowRight } from 'lucide-react';
@@ -28,10 +28,12 @@ export default function LoginPage() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    login(form);
-    toast.success('Welcome back! 🩸', { style: { background: '#033A4E', color: '#BFDBF7', border: '1px solid #1F7A8C' } });
-    navigate('/dashboard');
+    const success = await login(form.email, form.password);
+    setLoading(false);
+    
+    if (success) {
+      navigate('/dashboard');
+    }
   };
 
   return (

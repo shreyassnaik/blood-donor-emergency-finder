@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
@@ -17,6 +18,20 @@ const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 const ICON_MAP = { Zap, Clock, ShieldCheck, MapPin, Bell, Heart };
 
 export default function LandingPage() {
+  const [dbStats, setDbStats] = useState({
+    totalDonors: '—',
+    livesSaved: '—',
+    citiesCovered: '48+',
+    avgResponseTime: '—'
+  });
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(res => res.json())
+      .then(data => setDbStats(data))
+      .catch(console.error);
+  }, []);
+
   return (
     <div className="bg-gradient-hero dot-grid">
 
@@ -155,10 +170,10 @@ export default function LandingPage() {
             className="grid grid-cols-2 lg:grid-cols-4 gap-6"
           >
             {[
-              { value: '—', label: 'Verified Donors', icon: Users, color: '#1F7A8C' },
-              { value: '—', label: 'Lives Saved', icon: Heart, color: '#BFDBF7' },
-              { value: '48+', label: 'Cities Covered', icon: MapPin, color: '#E1E5F2' },
-              { value: '—', label: 'Avg. Response Time', icon: Zap, color: '#22909F' },
+              { value: dbStats.totalDonors, label: 'Verified Donors', icon: Users, color: '#1F7A8C' },
+              { value: dbStats.livesSaved, label: 'Lives Saved', icon: Heart, color: '#BFDBF7' },
+              { value: dbStats.citiesCovered, label: 'Cities Covered', icon: MapPin, color: '#E1E5F2' },
+              { value: dbStats.avgResponseTime, label: 'Avg. Response Time', icon: Zap, color: '#22909F' },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label} custom={i} variants={fadeUp}

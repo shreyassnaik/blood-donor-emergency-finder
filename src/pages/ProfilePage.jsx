@@ -37,8 +37,8 @@ export default function ProfilePage() {
     setEditing(false);
   };
 
-  const canDonate = canDonateAgain(user?.lastDonation);
-  const daysSince = daysSinceDonation(user?.lastDonation);
+  const canDonate = canDonateAgain(user?.last_donation);
+  const daysSince = daysSinceDonation(user?.last_donation);
 
   const tabs = [
     { id: 'info', label: 'Profile Info' },
@@ -78,7 +78,7 @@ export default function ProfilePage() {
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-3">
               <span className="px-3 py-1.5 bg-[#BFDBF7]/10 border border-[#BFDBF7]/15 rounded-xl text-sm font-bold text-[#BFDBF7]">
-                {user?.bloodGroup}
+                {user?.blood_group}
               </span>
               <span className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
                 user?.available
@@ -93,8 +93,8 @@ export default function ProfilePage() {
           {/* Stats */}
           <div className="flex gap-4 sm:gap-6 flex-shrink-0">
             {[
-              { value: user?.donationCount, label: 'Donations', icon: Droplets },
-              { value: user?.donationCount * 3, label: 'Lives Saved', icon: Heart },
+              { value: user?.donation_count, label: 'Donations', icon: Droplets },
+              { value: user?.donation_count * 3, label: 'Lives Saved', icon: Heart },
             ].map(s => (
               <div key={s.label} className="text-center">
                 <p className="text-2xl font-bold text-[#BFDBF7] font-display">{s.value}</p>
@@ -108,12 +108,12 @@ export default function ProfilePage() {
         <div className="relative mt-6 pt-5 border-t border-[#BFDBF7]/10">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-[#BFDBF7]/50">Profile Completion</span>
-            <span className="text-xs font-bold text-[#BFDBF7]/70">{user?.profileCompletion}%</span>
+            <span className="text-xs font-bold text-[#BFDBF7]/70">{user?.profile_completion}%</span>
           </div>
           <div className="h-1.5 bg-[#BFDBF7]/10 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${user?.profileCompletion}%` }}
+              animate={{ width: `${user?.profile_completion}%` }}
               transition={{ delay: 0.5, duration: 0.8 }}
               className="h-full bg-[#BFDBF7]/60 rounded-full"
             />
@@ -194,7 +194,7 @@ export default function ProfilePage() {
                 <Droplets size={16} className="text-[#1F7A8C]" />
                 <div>
                   <p className="text-xs text-[#BFDBF7]/40">Blood Group</p>
-                  <p className="text-sm font-bold text-[#BFDBF7]">{user?.bloodGroup}</p>
+                  <p className="text-sm font-bold text-[#BFDBF7]">{user?.blood_group}</p>
                 </div>
                 <div className="ml-4 text-xs text-[#BFDBF7]/30 flex items-center gap-1">
                   <Shield size={11} /> Verified · Cannot be changed after registration
@@ -247,7 +247,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-[#BFDBF7]/80">{d.hospital}</p>
-                      <p className="text-xs text-[#BFDBF7]/40">{formatDate(d.date)} · {d.bloodGroup}</p>
+                      <p className="text-xs text-[#BFDBF7]/40">{formatDate(d.date)} · {d.blood_group}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-medium text-[#E1E5F2]">✓ Completed</p>

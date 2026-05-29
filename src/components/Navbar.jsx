@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Droplets, Users, Settings, Shield
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { formatRelativeTime } from '../utils/helpers';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout, unreadCount, notifications, markNotificationRead } = useApp();
@@ -15,6 +16,9 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const navigate = useNavigate();
 
+  const notifRef = useRef(null);
+  const profileRef = useRef(null);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -23,9 +27,12 @@ export default function Navbar() {
 
   // Close dropdowns on outside click
   useEffect(() => {
-    const handler = () => { setNotifOpen(false); setProfileOpen(false); };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const navLinks = [
@@ -88,7 +95,7 @@ export default function Navbar() {
             {isAuthenticated ? (
               <>
                 {/* Notifications */}
-                <div className="relative" onClick={e => e.stopPropagation()}>
+                <div className="relative" ref={notifRef}>
                   <button
                     onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}
                     aria-label="Notifications"
@@ -118,15 +125,15 @@ export default function Navbar() {
                             <button
                               key={n.id}
                               onClick={() => markNotificationRead(n.id)}
-                              className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#1F7A8C]/08 transition-colors border-b border-[#1F7A8C]/05 ${!n.read ? 'bg-[#1F7A8C]/05' : ''}`}
+                              className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#1F7A8C]/08 transition-colors border-b border-[#1F7A8C]/05 ${!n.is_read ? 'bg-[#1F7A8C]/05' : ''}`}
                             >
                               <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
                                 n.type === 'request' ? 'bg-[#1F7A8C]' :
                                 n.type === 'match' ? 'bg-[#BFDBF7]' : 'bg-[#E1E5F2]'
-                              } ${!n.read ? 'opacity-100' : 'opacity-0'}`} />
+                              } ${!n.is_read ? 'opacity-100' : 'opacity-0'}`} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs text-[#BFDBF7]/80 leading-relaxed">{n.message}</p>
-                                <p className="text-xs text-[#BFDBF7]/30 mt-1">{n.time}</p>
+                                <p className="text-xs text-[#BFDBF7]/30 mt-1">{formatRelativeTime(n.created_at)}</p>
                               </div>
                             </button>
                           ))}
@@ -142,7 +149,7 @@ export default function Navbar() {
                 </div>
 
                 {/* Profile Dropdown */}
-                <div className="relative" onClick={e => e.stopPropagation()}>
+                <div className="relative" ref={profileRef}>
                   <button
                     onClick={() => { setProfileOpen(o => !o); setNotifOpen(false); }}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#1F7A8C]/15 transition-all group"

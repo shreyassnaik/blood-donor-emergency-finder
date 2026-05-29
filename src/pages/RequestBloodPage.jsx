@@ -1,15 +1,17 @@
 ﻿import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, MapPin, Droplets, AlertTriangle, FileText, Building2, Hash, Send, CheckCircle } from 'lucide-react';
+import { User, MapPin, Droplets, AlertTriangle, FileText, Building2, Hash, Send, CheckCircle, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FormInput, { FormSelect, FormTextarea } from '../components/ui/FormInput';
 import Button from '../components/ui/Button';
 import { BLOOD_GROUPS, CITIES, URGENCY_LEVELS } from '../data/mockData';
+import { useApp } from '../context/AppContext';
 
 export default function RequestBloodPage() {
+  const { user } = useApp();
   const [form, setForm] = useState({
     patientName: '', bloodGroup: '', hospital: '', units: '1',
-    urgency: '', city: '', notes: '',
+    urgency: '', city: '', notes: '', contactPhone: '',
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,7 @@ export default function RequestBloodPage() {
     if (!form.units || isNaN(form.units) || +form.units < 1) errs.units = 'Enter valid units (min 1)';
     if (!form.urgency) errs.urgency = 'Select urgency level';
     if (!form.city) errs.city = 'City required';
+    if (!form.contactPhone.trim()) errs.contactPhone = 'Contact phone required';
     return errs;
   };
 
@@ -35,14 +38,47 @@ export default function RequestBloodPage() {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    
+    if (!user) {
+      toast.error('You must be logged in to post a request');
+      return;
+    }
+
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1800));
-    setLoading(false);
-    setSubmitted(true);
-    toast.success('Emergency request posted! Notifying nearby donors...', {
-      duration: 5000,
-      style: { background: '#033A4E', color: '#BFDBF7', border: '1px solid #1F7A8C' }
-    });
+    try {
+      const response = await fetch('/api/requests', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          patient_name: form.patientName,
+          blood_group: form.bloodGroup,
+          hospital: form.hospital,
+          city: form.city,
+          units: parseInt(form.units),
+          urgency: form.urgency,
+          contact_phone: form.contactPhone,
+          requester_id: user.id || user.user_id
+        }),
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+        toast.success('Emergency request posted! Notifying nearby donors...', {
+          duration: 5000,
+          style: { background: '#033A4E', color: '#BFDBF7', border: '1px solid #1F7A8C' }
+        });
+      } else {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to post request');
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectedUrgency = URGENCY_LEVELS.find(u => u.value === form.urgency);
@@ -174,6 +210,16 @@ export default function RequestBloodPage() {
                 value={form.hospital}
                 onChange={e => set('hospital', e.target.value)}
                 error={errors.hospital}
+                required
+              />
+              <FormInput
+                label="Contact Phone Number"
+                id="contact-phone"
+                placeholder="e.g. +91 98765 43210"
+                icon={Phone}
+                value={form.contactPhone}
+                onChange={e => set('contactPhone', e.target.value)}
+                error={errors.contactPhone}
                 required
               />
               <FormSelect

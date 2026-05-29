@@ -50,7 +50,7 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#BFDBF7] truncate">{user.name}</p>
-              <p className="text-xs text-[#BFDBF7]">{user.bloodGroup} · {user.city}</p>
+              <p className="text-xs text-[#BFDBF7]">{user.blood_group} · {user.city}</p>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2">

@@ -20,7 +20,7 @@ export default function DonorCard({ donor, onContact, isContacting, delay = 0 })
             </div>
             <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#033A4E] ${donor.available ? 'bg-[#E1E5F2]' : 'bg-[#1F7A8C]/40'}`} />
           </div>
-          <BloodGroupBadge group={donor.bloodGroup} />
+          <BloodGroupBadge group={donor.blood_group} />
         </div>
 
         <h3 className="text-sm font-semibold text-[#BFDBF7] mb-1 truncate">{donor.name}</h3>
@@ -31,7 +31,7 @@ export default function DonorCard({ donor, onContact, isContacting, delay = 0 })
         {/* Stats Row */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="text-center p-2 bg-[#1F7A8C]/08 rounded-xl border border-[#1F7A8C]/10">
-            <p className="text-base font-bold text-[#BFDBF7]">{donor.donationCount}</p>
+            <p className="text-base font-bold text-[#BFDBF7]">{donor.donation_count}</p>
             <p className="text-xs text-[#BFDBF7]/40 mt-0.5">Donations</p>
           </div>
           <div className="text-center p-2 bg-[#BFDBF7]/08 rounded-xl border border-[#BFDBF7]/10">
@@ -49,7 +49,7 @@ export default function DonorCard({ donor, onContact, isContacting, delay = 0 })
         </div>
 
         <p className="text-xs text-[#BFDBF7]/30 mb-4">
-          Last donated: {formatRelativeTime(donor.lastDonation)}
+          Last donated: {formatRelativeTime(donor.last_donation)}
         </p>
       </div>
 

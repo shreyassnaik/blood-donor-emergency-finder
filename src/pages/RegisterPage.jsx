@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Lock, Phone, MapPin, Droplets, Heart, Eye, EyeOff, Check, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -11,7 +11,7 @@ import { BLOOD_GROUPS, CITIES } from '../data/mockData';
 const STEPS = ['Account', 'Personal', 'Donor Info'];
 
 export default function RegisterPage() {
-  const { login } = useApp();
+  const { login, registerUser } = useApp();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -59,10 +59,43 @@ export default function RegisterPage() {
     const errs = validateStep();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    login(form);
-    toast.success('Account created! Welcome to BloodLink 🩸', { style: { background: '#033A4E', color: '#BFDBF7', border: '1px solid #1F7A8C' } });
-    navigate('/dashboard');
+    
+    // Convert frontend form to backend UserCreate schema
+    const userData = {
+      email: form.email,
+      password: form.password,
+      role: form.role
+    };
+
+    const registerResult = await registerUser(userData);
+    
+    if (registerResult && registerResult.id) {
+      if (form.role === 'donor') {
+        try {
+          await fetch('/api/donors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: registerResult.id,
+              name: form.name,
+              blood_group: form.bloodGroup,
+              city: form.city,
+              phone: form.phone,
+              available: true
+            })
+          });
+        } catch (e) {
+          console.error("Failed to create donor profile", e);
+        }
+      }
+
+      const loginSuccess = await login(form.email, form.password);
+      if (loginSuccess) {
+        toast.success('Account created! Welcome to BloodLink 🩸', { style: { background: '#033A4E', color: '#BFDBF7', border: '1px solid #1F7A8C' } });
+        navigate('/dashboard');
+      }
+    }
+    setLoading(false);
   };
 
   const stepContent = [

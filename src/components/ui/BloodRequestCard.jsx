@@ -13,13 +13,13 @@ export default function BloodRequestCard({ request, onRespond }) {
     }`}>
       {/* Blood Group Badge */}
       <div className="w-12 h-12 rounded-xl bg-[#1F7A8C] flex items-center justify-center text-sm font-bold text-[#BFDBF7] flex-shrink-0 shadow-md shadow-[#1F7A8C40]">
-        {request.bloodGroup}
+        {request.blood_group}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <p className="text-sm font-semibold text-[#BFDBF7] truncate">{request.patientName}</p>
+          <p className="text-sm font-semibold text-[#BFDBF7] truncate">{request.patient_name}</p>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${urg.bg} ${urg.text} ${urg.border}`}>
             {urg.label}
           </span>
@@ -28,7 +28,7 @@ export default function BloodRequestCard({ request, onRespond }) {
           <MapPin size={10} className="text-[#1F7A8C]" /> {request.hospital}
         </p>
         <p className="text-xs text-[#BFDBF7]/30 flex items-center gap-1">
-          <Clock size={10} /> {formatRelativeTime(request.createdAt)} · {request.units} unit{request.units > 1 ? 's' : ''} needed
+          <Clock size={10} /> {formatRelativeTime(request.created_at)} · {request.units} unit{request.units > 1 ? 's' : ''} needed
         </p>
       </div>
 

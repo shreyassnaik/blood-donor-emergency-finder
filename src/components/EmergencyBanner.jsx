@@ -1,10 +1,30 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function EmergencyBanner() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
+  const [criticalRequests, setCriticalRequests] = useState([]);
+
+  useEffect(() => {
+    async function fetchCriticalRequests() {
+      try {
+        const response = await fetch('/api/requests?status=open');
+        if (response.ok) {
+          const data = await response.json();
+          const critical = data.filter(r => r.urgency === 'critical');
+          setCriticalRequests(critical);
+          setVisible(critical.length > 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch critical requests:', error);
+      }
+    }
+    fetchCriticalRequests();
+  }, []);
+
+  const bloodGroups = [...new Set(criticalRequests.map(r => r.blood_group))].join(', ');
 
   return (
     <AnimatePresence>
@@ -24,8 +44,8 @@ export default function EmergencyBanner() {
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#E1E5F2] rounded-full animate-ping" />
                 </div>
                 <p className="text-sm text-[#BFDBF7] font-medium truncate">
-                  <span className="font-bold">3 Critical Requests</span> near you right now —
-                  <span className="text-[#E1E5F2] ml-1">O-, A+, B+</span> needed urgently
+                  <span className="font-bold">{criticalRequests.length} Critical Request{criticalRequests.length !== 1 ? 's' : ''}</span> near you right now —
+                  <span className="text-[#E1E5F2] ml-1">{bloodGroups}</span> needed urgently
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
