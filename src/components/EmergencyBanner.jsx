@@ -2,8 +2,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 export default function EmergencyBanner() {
+  const { user } = useApp();
   const [visible, setVisible] = useState(false);
   const [criticalRequests, setCriticalRequests] = useState([]);
 
@@ -13,7 +15,8 @@ export default function EmergencyBanner() {
         const response = await fetch('/api/requests?status=open');
         if (response.ok) {
           const data = await response.json();
-          const critical = data.filter(r => r.urgency === 'critical');
+          const id = user?.id || user?.user_id;
+          const critical = data.filter(r => r.urgency === 'critical' && r.requester_id !== id);
           setCriticalRequests(critical);
           setVisible(critical.length > 0);
         }
@@ -22,7 +25,7 @@ export default function EmergencyBanner() {
       }
     }
     fetchCriticalRequests();
-  }, []);
+  }, [user]);
 
   const bloodGroups = [...new Set(criticalRequests.map(r => r.blood_group))].join(', ');
 

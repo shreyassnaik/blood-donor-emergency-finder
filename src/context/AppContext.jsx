@@ -61,9 +61,11 @@ export function AppProvider({ children }) {
           if (donorRes.ok) {
             const donorData = await donorRes.json();
             userResponse = { ...userResponse, ...donorData };
+          } else if (donorRes.status === 404) {
+            console.warn("User has donor role but no donor profile exists yet.");
           }
         } catch (e) {
-          console.error("Could not fetch donor profile", e);
+          // Ignore network errors here to prevent login crash
         }
       }
 
@@ -191,6 +193,30 @@ export function AppProvider({ children }) {
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
+  const confirmDonation = useCallback(async (requestId, donorId) => {
+    console.log(`Confirming donation for request ${requestId} and donor ${donorId}...`);
+    try {
+      const response = await fetch(`/api/requests/${requestId}/confirm?donor_id=${donorId}`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        toast.success('Donation confirmed! History updated.');
+        return true;
+      } else {
+        const err = await response.json();
+        toast.error(err.detail || 'Failed to confirm donation');
+      }
+    } catch (err) {
+      console.error('Confirm error:', err);
+      toast.error('Network error');
+    }
+    return false;
+  }, []);
+
   return (
     <AppContext.Provider value={{
       user,
@@ -207,6 +233,7 @@ export function AppProvider({ children }) {
       updateProfile,
       markNotificationRead,
       fetchNotifications,
+      confirmDonation,
     }}>
       {children}
     </AppContext.Provider>

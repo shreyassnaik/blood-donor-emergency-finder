@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS donors (
     user_id INT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    blood_group VARCHAR(5) NOT NULL,
+    blood_group VARCHAR(10) NOT NULL,
     city VARCHAR(100) NOT NULL,
     phone VARCHAR(20) NOT NULL,
     available BOOLEAN DEFAULT TRUE,
@@ -61,8 +61,20 @@ CREATE TABLE IF NOT EXISTS notifications (
     type VARCHAR(50) NOT NULL,
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
+    related_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 6. Request Responses Table
+CREATE TABLE IF NOT EXISTS request_responses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    request_id INT NOT NULL,
+    donor_id INT NOT NULL,
+    status ENUM('pending', 'confirmed', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES blood_requests(id) ON DELETE CASCADE,
+    FOREIGN KEY (donor_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Indexes for performance

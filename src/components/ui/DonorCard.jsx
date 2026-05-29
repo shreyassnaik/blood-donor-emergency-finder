@@ -3,12 +3,15 @@ import { MapPin, Phone, Star, CheckCircle } from 'lucide-react';
 import { generateInitials, formatRelativeTime } from '../../utils/helpers';
 import { BloodGroupBadge } from './Card';
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+};
+
 export default function DonorCard({ donor, onContact, isContacting, delay = 0 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4 }}
+      variants={cardVariants}
       className="bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-2xl overflow-hidden group hover:border-[#1F7A8C]/30 hover:-translate-y-1 transition-all duration-300 hover:shadow-xl hover:shadow-[#1F7A8C20]"
     >
       <div className="p-5 pb-4">

@@ -1,7 +1,10 @@
-﻿import { Outlet, useLocation, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useState } from 'react';
-import { Menu, Bell, ChevronRight } from 'lucide-react';
+﻿import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { 
+  Menu, Bell, ChevronRight, User, LayoutDashboard, 
+  Droplets, Users, LogOut 
+} from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { useApp } from '../context/AppContext';
 
@@ -13,10 +16,29 @@ const BREADCRUMB_MAP = {
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, unreadCount } = useApp();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { user, unreadCount, logout } = useApp();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const profileRef = useRef(null);
 
   const crumbs = BREADCRUMB_MAP[pathname] || [{ label: 'Page' }];
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <div className="min-h-screen bg-[#022B3A] flex">
@@ -60,7 +82,8 @@ export default function DashboardLayout() {
             >
               🩸 Emergency Request
             </Link>
-            <button
+            <Link
+              to="/dashboard"
               aria-label="Notifications"
               className="relative p-2.5 rounded-xl text-[#BFDBF7]/50 hover:text-[#BFDBF7] hover:bg-[#1F7A8C]/15 transition-all"
             >
@@ -68,9 +91,53 @@ export default function DashboardLayout() {
               {unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#1F7A8C] rounded-full animate-pulse" />
               )}
-            </button>
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1F7A8C] to-[#155E70] flex items-center justify-center text-sm font-bold text-[#BFDBF7] cursor-pointer shadow-md shadow-[#1F7A8C40]">
-              {user?.name?.charAt(0)}
+            </Link>
+            
+            {/* Profile Dropdown */}
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setProfileOpen(!profileOpen)}
+                aria-label="User menu"
+                className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1F7A8C] to-[#155E70] flex items-center justify-center text-sm font-bold text-[#BFDBF7] cursor-pointer shadow-md shadow-[#1F7A8C40] hover:scale-105 transition-transform"
+              >
+                {user?.name?.charAt(0) ?? 'U'}
+              </button>
+
+              <AnimatePresence>
+                {profileOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                    className="absolute right-0 top-full mt-2 w-52 bg-[#033A4E] border border-[#1F7A8C]/20 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden py-1.5 z-50"
+                  >
+                    {[
+                      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+                      { to: '/profile', icon: User, label: 'My Profile' },
+                      { to: '/find-donors', icon: Users, label: 'Find Donors' },
+                      { to: '/request-blood', icon: Droplets, label: 'Request Blood' },
+                    ].map(item => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#BFDBF7]/70 hover:text-[#BFDBF7] hover:bg-[#1F7A8C]/10 transition-colors"
+                      >
+                        <item.icon size={15} className="text-[#1F7A8C]" />
+                        {item.label}
+                      </Link>
+                    ))}
+                    <div className="my-1.5 mx-3 border-t border-[#1F7A8C]/15" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#BFDBF7]/50 hover:text-[#BFDBF7] hover:bg-[#1F7A8C]/10 transition-colors text-left"
+                    >
+                      <LogOut size={15} className="text-[#1F7A8C]" />
+                      Sign Out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </header>

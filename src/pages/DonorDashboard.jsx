@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -44,31 +44,42 @@ const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
 export default function DonorDashboard() {
-  const { user, toggleAvailability, notifications, markNotificationRead } = useApp();
+  const { user, toggleAvailability, notifications, markNotificationRead, confirmDonation } = useApp();
   const [toggling, setToggling] = useState(false);
   const [responding, setResponding] = useState(null);
 
   const [chartData, setChartData] = useState([]);
   const [nearbyRequests, setNearbyRequests] = useState([]);
   const [donationHistory, setDonationHistory] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [responders, setResponders] = useState([]);
+  const [loadingResponders, setLoadingResponders] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [confirmingId, setConfirmingId] = useState(null);
 
   const handleRespond = async (requestId) => {
-    if (!user) return;
+    if (!user) {
+      toast.error('Please log in to respond');
+      return;
+    }
     setResponding(requestId);
     try {
       const donorId = user.id || user.user_id;
       const response = await fetch(`/api/requests/${requestId}/respond?donor_id=${donorId}`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
       });
       
+      const data = await response.json();
       if (response.ok) {
-        const data = await response.json();
-        toast.success(`Responded! Please contact ${data.patient_name}'s family at ${data.contact_phone}`);
-        // Optionally refresh nearby requests or mark as responded locally
+        toast.success(`Volunteer Request Sent! Contact: ${data.contact_phone}`, { duration: 6000 });
+        setNearbyRequests(prev => prev.filter(r => r.id !== requestId));
       } else {
-        const err = await response.json();
-        toast.error(err.detail || 'Failed to respond');
+        toast.error(data.detail || 'Failed to respond');
       }
     } catch (e) {
       toast.error('Network error');
@@ -82,23 +93,26 @@ export default function DonorDashboard() {
 
     async function fetchData() {
       try {
-        if (user.city) {
-          const reqRes = await fetch(`/api/requests?city=${encodeURIComponent(user.city)}&status=open`);
-          if (reqRes.ok) {
-            setNearbyRequests((await reqRes.json()).slice(0, 5));
-          }
+        const cityQuery = user.city ? `city=${encodeURIComponent(user.city)}&` : '';
+        const reqRes = await fetch(`/api/requests?${cityQuery}status=open`);
+        if (reqRes.ok) {
+          const data = await reqRes.json();
+          const id = user.id || user.user_id;
+          setNearbyRequests(data.filter(r => r.requester_id !== id).slice(0, 5));
         }
 
-        if (user.user_id || user.id) {
-          const id = user.user_id || user.id;
+        const id = user.id || user.user_id;
+        if (id) {
           const histRes = await fetch(`/api/donors/${id}/donations`);
           if (histRes.ok) {
-            const histData = await histRes.json();
-            setDonationHistory(histData);
-            
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-            const mockChart = months.map(m => ({ month: m, donations: Math.floor(Math.random() * 3) }));
-            setChartData(mockChart);
+            setDonationHistory(await histRes.json());
+            setChartData(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map(m => ({ month: m, donations: Math.floor(Math.random() * 3) })));
+          }
+
+          // Fetch requests posted by this user
+          const myRes = await fetch(`/api/requests?status=open&requester_id=${id}`);
+          if (myRes.ok) {
+            setMyRequests(await myRes.json());
           }
         }
       } catch (e) {
@@ -106,7 +120,43 @@ export default function DonorDashboard() {
       }
     }
     fetchData();
-  }, [user]);
+  }, [user, refreshTrigger]);
+
+  const fetchResponders = async (requestId) => {
+    setLoadingResponders(true);
+    setSelectedRequest(requestId);
+    setResponders([]);
+    try {
+      const res = await fetch(`/api/requests/${requestId}/responses`);
+      if (res.ok) {
+        const data = await res.json();
+        setResponders(data);
+      } else {
+        const err = await res.json();
+        toast.error(err.detail || 'Failed to load volunteers');
+      }
+    } catch (e) {
+      console.error('Fetch responders error:', e);
+      toast.error('Network error loading volunteers');
+    } finally {
+      setLoadingResponders(false);
+    }
+  };
+
+  const handleConfirm = async (requestId, donorId) => {
+    setConfirmingId(donorId);
+    try {
+      const success = await confirmDonation(requestId, donorId);
+      if (success) {
+        setMyRequests(prev => prev.filter(r => r.id !== requestId));
+        setSelectedRequest(null);
+        setResponders([]);
+        setRefreshTrigger(prev => prev + 1);
+      }
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const handleToggle = async () => {
     setToggling(true);
@@ -260,6 +310,86 @@ export default function DonorDashboard() {
 
       {/* Nearby Requests + History */}
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* My Active Requests (Conditional) */}
+        {myRequests.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+            className="bg-[#033A4E]/60 border border-[#22909F]/30 rounded-2xl p-5 shadow-xl shadow-[#22909F]/10"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-white flex items-center gap-2">
+                <Plus size={16} className="text-[#22909F]" /> My Active Requests
+              </h2>
+              <span className="text-[10px] bg-[#22909F]/20 text-[#BFDBF7] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                Action Required
+              </span>
+            </div>
+            
+            <div className="space-y-4">
+              {myRequests.map(req => (
+                <div key={req.id} className="space-y-3 p-1">
+                  <div className="flex items-start justify-between p-3.5 rounded-xl bg-[#1F7A8C]/15 border border-[#1F7A8C]/30 shadow-inner">
+                    <div>
+                      <p className="text-sm font-bold text-[#BFDBF7]">{req.patient_name} — <span className="text-[#22909F]">{req.blood_group}</span></p>
+                      <p className="text-xs text-[#BFDBF7]/40 flex items-center gap-1 mt-1">
+                        <MapPin size={10} /> {req.hospital}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => selectedRequest === req.id ? setSelectedRequest(null) : fetchResponders(req.id)}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        selectedRequest === req.id 
+                          ? 'bg-[#BFDBF7] text-[#022B3A]' 
+                          : 'bg-[#1F7A8C] text-[#BFDBF7] hover:bg-[#155E70]'
+                      }`}
+                    >
+                      {selectedRequest === req.id ? 'Close' : 'View Volunteers'}
+                    </button>
+                  </div>
+
+                  <AnimatePresence>
+                    {selectedRequest === req.id && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }} 
+                        animate={{ opacity: 1, height: 'auto' }} 
+                        exit={{ opacity: 0, height: 0 }}
+                        className="pl-4 space-y-2 border-l-2 border-[#22909F]/40 ml-2 overflow-hidden"
+                      >
+                        {loadingResponders ? (
+                          <div className="flex items-center gap-2 p-3 text-xs text-[#BFDBF7]/30 italic">
+                            <div className="w-3 h-3 border-2 border-[#BFDBF7]/20 border-t-[#BFDBF7] rounded-full animate-spin" />
+                            Loading volunteers...
+                          </div>
+                        ) : responders.length > 0 ? (
+                          responders.map(resp => (
+                            <div key={resp.id} className="flex items-center justify-between p-3 rounded-xl bg-[#033A4E]/60 border border-[#1F7A8C]/20 hover:border-[#1F7A8C]/40 transition-colors">
+                              <div>
+                                <p className="text-xs font-bold text-white">{resp.donor_name}</p>
+                                <p className="text-[10px] text-[#BFDBF7]/50 mt-0.5">{resp.phone} · {resp.donation_count} donations</p>
+                              </div>
+                              <button
+                                onClick={() => handleConfirm(req.id, resp.donor_id)}
+                                disabled={confirmingId === resp.donor_id}
+                                className="px-3 py-1.5 bg-[#22909F] text-white text-[10px] font-bold rounded-lg hover:bg-[#1F7A8C] transition-all shadow-lg shadow-[#22909F]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {confirmingId === resp.donor_id ? 'Confirming...' : 'Confirm Donation'}
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center bg-[#1F7A8C]/05 rounded-xl border border-dashed border-[#1F7A8C]/20">
+                            <p className="text-xs text-[#BFDBF7]/30 italic">No volunteers have responded to this request yet.</p>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           className="bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-2xl p-5"

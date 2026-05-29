@@ -1,5 +1,6 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import {
   User, Mail, Phone, MapPin, Droplets, Edit3, Save, X,
   Camera, Clock, Award, Heart, ToggleLeft, ToggleRight, Shield
@@ -17,9 +18,29 @@ export default function ProfilePage() {
   const [form, setForm] = useState({ ...user });
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
+  const [donationHistory, setDonationHistory] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
 
-  // Replace with API data: GET /api/donations/history
-  const donationHistory = [];
+  useEffect(() => {
+    if (!user) return;
+    const fetchData = async () => {
+      try {
+        const id = user.id || user.user_id;
+        // Fetch donation history
+        const histRes = await fetch(`/api/donors/${id}/donations`);
+        if (histRes.ok) setDonationHistory(await histRes.json());
+
+        // Fetch my requests
+        const reqRes = await fetch(`/api/requests?status=all&requester_id=${id}`); 
+        if (reqRes.ok) {
+          setMyRequests(await reqRes.json());
+        }
+      } catch (e) {
+        console.error('Failed to load profile data');
+      }
+    };
+    fetchData();
+  }, [user]);
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -43,6 +64,7 @@ export default function ProfilePage() {
   const tabs = [
     { id: 'info', label: 'Profile Info' },
     { id: 'history', label: 'Donation History' },
+    { id: 'requests', label: 'My Requests' },
     { id: 'settings', label: 'Settings' },
   ];
 
@@ -263,6 +285,53 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-sm text-[#BFDBF7]/40 mb-1">No donation history yet</p>
                 <p className="text-xs text-[#BFDBF7]/25">Your records will appear here once connected to the backend</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'requests' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-semibold text-white">My Emergency Requests</h2>
+              <span className="text-xs text-[#BFDBF7]/40">{myRequests.length} posts</span>
+            </div>
+            {myRequests.length > 0 ? (
+              <div className="space-y-3">
+                {myRequests.map((req, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.08 }}
+                    className="flex items-center gap-4 p-4 rounded-xl bg-[#1F7A8C]/05 border border-[#1F7A8C]/10 hover:border-[#1F7A8C]/20 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#1F7A8C] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                      {req.blood_group}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-[#BFDBF7]/80">{req.patient_name}</p>
+                      <p className="text-xs text-[#BFDBF7]/40">{req.hospital} · {formatDate(req.created_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${
+                        req.status === 'open' ? 'bg-[#1F7A8C]/20 text-[#BFDBF7]' : 'bg-[#E1E5F2]/20 text-[#E1E5F2]'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-14 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-[#1F7A8C]/10 border border-[#1F7A8C]/15 flex items-center justify-center mb-4">
+                  <Heart size={22} className="text-[#1F7A8C]/40" />
+                </div>
+                <p className="text-sm text-[#BFDBF7]/40 mb-1">No requests posted yet</p>
+                <p className="text-xs text-[#BFDBF7]/25">Emergency requests you post will appear here</p>
               </div>
             )}
           </div>

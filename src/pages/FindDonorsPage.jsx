@@ -12,6 +12,8 @@ import toast from 'react-hot-toast';
 import SearchBar from '../components/ui/SearchBar';
 import FilterPanel from '../components/ui/FilterPanel';
 import { BloodGroupBadge } from '../components/ui/Card';
+import DonorCard from '../components/ui/DonorCard';
+import { useApp } from '../context/AppContext';
 
 const BLOOD_GROUPS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
@@ -37,10 +39,16 @@ const SORT_OPTIONS = [
   { value: 'name', label: 'Name A–Z' },
 ];
 
-const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
-const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: { 
+    opacity: 1,
+    transition: { staggerChildren: 0.05 } 
+  }
+};
 
 export default function FindDonorsPage() {
+  const { user } = useApp();
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState('rating');
@@ -72,6 +80,13 @@ export default function FindDonorsPage() {
 
   const donors = useMemo(() => {
     let list = [...allDonors];
+    
+    // Filter out the current user
+    const currentId = user?.id || user?.user_id;
+    if (currentId) {
+      list = list.filter(d => d.user_id !== currentId);
+    }
+
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(d =>
@@ -93,7 +108,8 @@ export default function FindDonorsPage() {
   }, [allDonors, search, filters, sort]);
 
   const handleContact = (donor) => {
-    setContactedId(donor.id);
+    const id = donor.user_id || donor.id;
+    setContactedId(id);
     toast.success('Connecting to donor...', {
       icon: '📞',
       style: { background: '#033A4E', color: '#BFDBF7', border: '1px solid #1F7A8C' },
@@ -107,7 +123,7 @@ export default function FindDonorsPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
         <h1 className="text-3xl font-bold font-display text-white mb-2">Find Blood Donors</h1>
         <p className="text-[#BFDBF7]/50">
-          Search and filter verified donors — data loads from your database
+          Search and filter verified donors in your area
         </p>
       </motion.div>
 
@@ -143,9 +159,9 @@ export default function FindDonorsPage() {
       {/* Results info */}
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-[#BFDBF7]/40">
-          {donors.length > 0
+          {loading ? 'Loading donors...' : donors.length > 0
             ? <>Showing <span className="text-[#BFDBF7]/70 font-medium">{donors.length}</span> donor{donors.length !== 1 ? 's' : ''}</>
-            : 'Connect to backend to load donors'}
+            : 'No donors found with current filters'}
         </p>
         {Object.values(filters).some(Boolean) && (
           <button
@@ -157,8 +173,13 @@ export default function FindDonorsPage() {
         )}
       </div>
 
-      {/* Empty State */}
-      {donors.length === 0 ? (
+      {/* Main Content */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-32">
+          <div className="w-12 h-12 border-4 border-[#1F7A8C]/20 border-t-[#1F7A8C] rounded-full animate-spin mb-4" />
+          <p className="text-sm text-[#BFDBF7]/40">Searching our network...</p>
+        </div>
+      ) : donors.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           className="text-center py-24"
@@ -166,9 +187,9 @@ export default function FindDonorsPage() {
           <div className="w-20 h-20 rounded-3xl bg-[#1F7A8C]/10 border border-[#1F7A8C]/15 flex items-center justify-center mx-auto mb-5">
             <Search size={32} className="text-[#1F7A8C]/40" />
           </div>
-          <p className="text-[#BFDBF7]/50 text-lg font-medium mb-2">No donors yet</p>
+          <p className="text-[#BFDBF7]/50 text-lg font-medium mb-2">No donors found</p>
           <p className="text-[#BFDBF7]/30 text-sm">
-            Donor data will appear here once your FastAPI backend is connected.
+            Try adjusting your search or filters to find more volunteers.
           </p>
         </motion.div>
       ) : (
@@ -176,83 +197,16 @@ export default function FindDonorsPage() {
           variants={stagger} initial="hidden" animate="visible"
           className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
         >
-          {donors.map(donor => (
-            <motion.div key={donor.id} variants={fadeUp}>
-              <DonorCard
-                donor={donor}
-                onContact={handleContact}
-                isContacting={contactedId === donor.id}
-              />
-            </motion.div>
+          {donors.map((donor) => (
+            <DonorCard
+              key={donor.user_id || donor.id}
+              donor={donor}
+              onContact={handleContact}
+              isContacting={contactedId === (donor.user_id || donor.id)}
+            />
           ))}
         </motion.div>
       )}
-    </div>
-  );
-}
-
-function DonorCard({ donor, onContact, isContacting }) {
-  const initials = donor.name
-    ? donor.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'D';
-
-  return (
-    <div className="bg-[#033A4E]/60 border border-[#1F7A8C]/15 rounded-2xl overflow-hidden group hover:border-[#1F7A8C]/30 hover:-translate-y-1 transition-all duration-300 hover:shadow-xl hover:shadow-[#1F7A8C]/10">
-      <div className="p-5 pb-4">
-        <div className="flex items-start justify-between mb-4">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1F7A8C] to-[#155E70] flex items-center justify-center text-base font-bold text-white shadow-lg">
-              {initials}
-            </div>
-            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#033A4E] ${donor.available ? 'bg-[#E1E5F2]' : 'bg-[#1F7A8C]/40'}`} />
-          </div>
-          <BloodGroupBadge group={donor.blood_group} />
-        </div>
-
-        <h3 className="text-sm font-semibold text-white mb-1 truncate">{donor.name}</h3>
-        <p className="text-xs text-[#BFDBF7]/40 flex items-center gap-1 mb-3">
-          <MapPin size={10} className="text-[#1F7A8C]" /> {donor.city}
-        </p>
-
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="text-center p-2 bg-[#1F7A8C]/08 rounded-xl border border-[#1F7A8C]/10">
-            <p className="text-base font-bold text-white">{donor.donation_count ?? '—'}</p>
-            <p className="text-xs text-[#BFDBF7]/40 mt-0.5">Donations</p>
-          </div>
-          <div className="text-center p-2 bg-[#BFDBF7]/05 rounded-xl border border-[#BFDBF7]/10">
-            <p className="text-base font-bold text-white flex items-center justify-center gap-0.5">
-              <Star size={10} className="text-[#BFDBF7] fill-[#BFDBF7]" /> {donor.rating ?? '—'}
-            </p>
-            <p className="text-xs text-[#BFDBF7]/40 mt-0.5">Rating</p>
-          </div>
-          <div className={`text-center p-2 rounded-xl border ${donor.available ? 'bg-[#E1E5F2]/08 border-[#E1E5F2]/10' : 'bg-[#1F7A8C]/05 border-[#1F7A8C]/08'}`}>
-            <p className={`text-xs font-bold ${donor.available ? 'text-[#E1E5F2]' : 'text-[#BFDBF7]/30'}`}>
-              {donor.available ? '●' : '○'}
-            </p>
-            <p className="text-xs text-[#BFDBF7]/40 mt-0.5">{donor.available ? 'Ready' : 'Busy'}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 pb-4">
-        <button
-          onClick={() => onContact(donor)}
-          disabled={!donor.available || isContacting}
-          className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-            isContacting
-              ? 'bg-[#E1E5F2]/20 border border-[#E1E5F2]/30 text-[#E1E5F2]'
-              : donor.available
-              ? 'bg-[#1F7A8C] hover:bg-[#155E70] text-white shadow-md shadow-[#1F7A8C]/20'
-              : 'bg-[#1F7A8C]/10 border border-[#1F7A8C]/15 text-[#BFDBF7]/30 cursor-not-allowed'
-          }`}
-        >
-          {isContacting ? (
-            <><span className="w-4 h-4 border-2 border-[#E1E5F2] border-t-transparent rounded-full animate-spin" /> Connecting...</>
-          ) : (
-            <><Phone size={14} /> {donor.available ? 'Contact Donor' : 'Unavailable'}</>
-          )}
-        </button>
-      </div>
     </div>
   );
 }

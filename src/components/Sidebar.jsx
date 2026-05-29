@@ -1,8 +1,8 @@
-﻿import { NavLink } from 'react-router-dom';
+﻿import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Droplets, Users, User, Heart,
-  Settings, Bell, X, ChevronRight, Shield
+  Settings, Bell, X, ChevronRight, Shield, LogOut
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -18,7 +18,14 @@ const adminItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { user } = useApp();
+  const { user, logout } = useApp();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    onClose();
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -120,6 +127,13 @@ export default function Sidebar({ isOpen, onClose }) {
           <Settings size={16} />
           Settings
         </NavLink>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#BFDBF7]/30 hover:text-[#BFDBF7]/60 hover:bg-[#1F7A8C]/05 transition-colors"
+        >
+          <LogOut size={16} />
+          Sign Out
+        </button>
       </div>
     </div>
   );

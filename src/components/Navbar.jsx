@@ -28,11 +28,19 @@ export default function Navbar() {
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
-      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+      // Check if click was outside profile dropdown
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+      // Check if click was outside notification dropdown
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    
+    // Use 'click' for better cross-device compatibility
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
   }, []);
 
   const navLinks = [
